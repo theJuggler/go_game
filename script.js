@@ -9,8 +9,6 @@ var turn = 0;
 var colors = ["black", "white"];
 var board;
 var ps = 15;
-var group_by_member={};
-var liberty_by_member={};
 var board_color = "#de6";
 var score = [0,0];
 new_Game();
@@ -30,99 +28,77 @@ $('#a').click(function (e) {
 });
 
 function make_move(j,i){
-	var its_go = find_group(j,i);
-	if (its_go === 1){
-		board[j][i] = (turn % 2);
-		return 1;
-	}else{
+	board[j][i] = (turn % 2);
+	var its_go = find_group(j,i,(turn % 2),true);
+	if (its_go === 0){
+		board[j][i] = -1;
 		return 0;
+	}else{
+		return 1;
 	}
 };
-function find_group(j,i){
-	var grouped = [];
+function find_group(j,i,player,check_capture){
+	var group = [[j,i]];
+	var group_check ={};
+	group_check[[j,i]] = 0;
 	var liberty =[];
-	var p = [[j-1,i],[j+1,i],[j,i-1],[j,i+1]];
-	for(var k = 0 ; k < 4 ; k ++){
-		var jk = p[k][0];
-		var ik = p[k][1];
-		if( jk >= 0 && ik >= 0 && jk <= size  && ik <= size ){
-				
-			if(board[jk][ik] === -1){
-				liberty.push(p[k]);
-			}
-			else if (board[jk][ik] === (turn%2)){ 
-					grouped.push( p[k] );
-			}
-			else {
-				liberty_by_member[p[k]] = remove( liberty_by_member[p[k]], [j,i] );
-				if (liberty_by_member[p[k]].length === 0){
-					eliminate_group(p[k]);
-					liberty.push(p[k]);
-				}
-			}
+	var capture=[];
+	for(var k0 = 0; k0 < group.length; k0 +=1){
+		var j0 = group[k0][0];
+		var i0 = group[k0][1];
+		var p = [[j0-1,i0],[j0+1,i0],[j0,i0-1],[j0,i0+1]];
 
-		}
-	}
-	// take liberty
-	for(var k2 = 0; k2 < grouped.length;k2++){
-		liberty = liberty.concat(liberty_by_member[grouped[k2]]);
-	}
-	//liberty = remove( liberty_by_member[p[k]], [j,i] );
-	liberty = arrayUnique(liberty);
-	liberty = remove( liberty, [j,i] );
-	// adding back liberty
-	//having no liberty is not allowed 
-	if (liberty.length === 0){
 		for(var k = 0 ; k < 4 ; k ++){
 			var jk = p[k][0];
 			var ik = p[k][1];
-			if( jk >= 0 && ik >= 0 && jk <= size  && ik <= size  ){
-				liberty_by_member[p[k]].push( [j,i] ) ;
+			if( jk >= 0 && ik >= 0 && jk <= size  && ik <= size ){
+				if(board[jk][ik] === -1){
+					liberty.push(p[k]);
+				}
+				else if (board[jk][ik] === player){ 
+					if (group_check[p[k]] !== 0){
+						group.push( p[k] );
+						group_check[p[k]]  = 0;
+					}
+				}
+				else if (k0 === 0 ){ //only need to check for captures around new point
+					capture.push( p[k] );
+				}
+
 			}
 		}
-		return 0;
+	}
+	if ( check_capture === true){
+		var capture_count =0;
+		for(var k2 =0; k2 < capture.length; k2++){
+			if (find_group(capture[k2][0],capture[k2][1],(player+1)%2,false) === 0){
+				capture_count += 1;
+			}
+		}
+		if( capture_count > 0){
+			return group;
+		}else if ( liberty.length === 0 ){
+			return 0;
+		}else{
+			return group;
+		}
+	}else{
+		if( liberty.length === 0){
+			eliminate_group(group);
+			return 0;
+		}else{
+			return group;
+		}
 	}
 
-	//join groups 
-	var temp = [[j,i]];
-	for(var k2 = 0; k2 < grouped.length;k2++){
-		temp = temp.concat(group_by_member[grouped[k2]]);
-	}
-	temp = arrayUnique(temp);
-	group_by_member[[j,i]] = temp;
-	liberty_by_member[[j,i]] = liberty;
-	for(var k2 = 0; k2 < temp.length;k2++){
-		group_by_member[temp[k2]] = temp;
-		liberty_by_member[temp[k2]] = liberty;
-	}
-	return 1;
 };
-function eliminate_group(index_g){
-	var temp_e = group_by_member[index_g];
-	for(var k3 = 0; k3 < temp_e.length;k3++){
-		 eliminate_element(temp_e[k3]);
-	}
-	for(var k3 = 0; k3 < temp_e.length;k3++){
-		delete group_by_member[temp_e[k3]];
-		delete liberty_by_member[temp_e[k3]];
-		board[temp_e[k3][0]][temp_e[k3][1]] = -1;
+function eliminate_group(group){
+	for(var k3 = 0; k3 < group.length;k3++){
+		board[group[k3][0]][group[k3][1]] = -1;
+		erase_piece(group[k3][1]*40+40,group[k3][0]*40+40,board_color);
 	}
 };
-function eliminate_element(index_e){
-	var i =index_e[1];
-	var j =index_e[0];
-	var p = [[j-1,i],[j+1,i],[j,i-1],[j,i+1]];
-	for(var k = 0 ; k < 4 ; k ++){
-		var jk = p[k][0];
-		var ik = p[k][1];
-		if( jk >= 0 && ik >= 0 && jk <= size  && ik <= size ){
-			if (board[jk][ik] === (turn+1)%2 ){
-				liberty_by_member[p[k]].push( [j,i] );
-			}
-		}
-	}
-	erase_piece(i*40+40,j*40+40,board_color);
-};
+
 function remove(a,n){
 	var array = a.concat();
     for(var j=0; j<array.length; ++j) {
