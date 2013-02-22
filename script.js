@@ -6,22 +6,41 @@ var context = a_canvas.getContext("2d");
 var size = 8;
 var piece_size = 40;
 var turn = 0
-var colors = ["black", "white"]
+var colors = ["black", "white"];
+var board;
 ps = 15;
 
-draw_board(size,piece_size ,40,"#fff");
+newGame();
 
 $('#a').click(function (e) {
     var x = e.pageX - this.offsetLeft;
     var y = e.pageY - this.offsetTop;
 	x = roundMultiple(x,piece_size);
 	y = roundMultiple(y,piece_size);
-	if( x > 0 && y > 0){
-
+	var i = x/40 -1;
+	var j = y/40 -1;
+	if( x > 0 && y > 0 && y < 400 && x < 400 && board[j][i] === -1){
     	draw_piece(x,y,colors[turn],ps);
+    	board[j][i] = turn;
     	turn = (turn +1 )% 2;
     }
 });
+
+function newGame(){
+	turn =0;
+	new_board();
+	draw_board(size,piece_size ,40,"#de6");
+};
+// sets up the board data structure
+function new_board(){
+	board = [];
+	for (var i = 0;i < 9;i++){
+		board[i] =[];
+	    for (var j = 0;j < 9;j++){
+	    	board[i][j] = -1;
+	    }
+	 }
+}
 
 function roundMultiple(num, multiple) {
   return(Math.round(num / multiple) * multiple);
@@ -38,7 +57,7 @@ function draw_piece(x,y,color,ps){
 };
 
 function erase_piece(x,y,board_color){
-	draw_piece(context,x,y,board_color)
+	draw_piece(context,x,y,board_color,ps)
 };
 
 function draw_board( size, piece_size, start, board_color){
