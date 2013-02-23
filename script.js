@@ -3,6 +3,7 @@ var context = a_canvas.getContext("2d");
 
 var game_v = new Game_Visuals();
 var game0 = new Game_Logic();
+var al = new Player();
 game0.new_Game();
 
 
@@ -18,6 +19,14 @@ $('#a').click(function (e) {
     	if (game0.make_move(j,i) ===1){
     		game_v.draw_piece(x,y,game0.colors[game0.turn%2]);
     		game0.turn += 1 ;
+    		if(game0.ai){
+    			var ji2 = al.next_move();
+    			while( game0.make_move(ji2[0],ji2[1]) !== 1){
+    				ji2 = al.next_move();
+    			} 
+    			game_v.draw_piece( (ji2[1]+1)*40, (ji2[0]+1)*40, game0.colors[game0.turn%2]);
+    			game0.turn += 1 ;
+    		}
    		 }
     }else if( x_raw > 0 && y_raw > game_v.game_size && y_raw < game_v.game_size+28 && x < game_v.game_size ){
     	
@@ -33,11 +42,23 @@ $('#a').click(function (e) {
     }
 });
 
+function Player(){
+	this.next_move= function(){
+		var jp = 2;
+		var ip = 2;
+		while (game0.board[jp][ip] !== -1){
+			jp = Math.floor((Math.random()*(game0.size+1) ));
+			ip = Math.floor((Math.random()*(game0.size+1) ));
+		}
+		return [jp,ip];
+	};
+};
 
 function Game_Logic(){
 	this.colors = ["black", "white"];
 	this.size = 8;
 	this.new_Game =function (){
+		this.ai=true;
 		this.playing = true;
 		this.turn =0;
 		this.new_board();
@@ -47,6 +68,9 @@ function Game_Logic(){
 	};
 	this.pass =function(){
 		this.pass_count += 1;
+		if(this.ai){
+			this.pass_count +=1;
+		}
 		if (this.pass_count === 2){
 			this.game_over()
 		}
