@@ -66,15 +66,27 @@ function Player(){
 				moves.push(index);
 			}
 		}
+		var player = game0.turn%2;
+		var best_move =0;
+		var best =[0,0];
+		best[player] =-1000;
 		for(var n = 0; n < moves.length ; n++){
 			var ji = move_list[moves[n]];
+			var score_n = $.extend(true, [], game0.score);
 			var board_n = $.extend(true, [], game0.board);
-			board_n = simulate_move(ji[0],ji[1],turn%2,board_n);
-			
+			board_n[ji[0]][ji[1]] =player;
+			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
+			if( result !== -1){ //if not suicide
+				result = this.mct_child(result[0],result[1],(player+1)%2,depth-1,breath)
+				if (result[player] > best[player]){
+					best = result;
+					best_move = ji;	
+				}
+			}
 
 		}
 
-		return [jp,ip];
+		return best_move;
 	};
 
 	this.valid_moves =function(aboard){
@@ -89,12 +101,44 @@ function Player(){
 		return move_list;
 	};
 
-	this.mct_child = function(aboard,player){
+	// returns score
+	this.mct_child = function(aboard,score,player,depth,breath){
+		if( depth === 0){
+			return score;
+		}
+		var moves =[];
+		var attempt = 0;
+		var move_list = this.valid_moves(aboard);
 
+		while (moves.length < breath || moves.length === move_list.length){
+			var index = Math.floor((Math.random()*(move_list.length) ));
+			if( moves.indexOf(index) === -1){
+				moves.push(index);
+			}
+		}
+		var next_player = (player+1)%2;
+		var best_move =0;
+		var best_score =score;
+		for(var n = 0; n < moves.length ; n++){
+			var ji = move_list[moves[n]];
+			var score_n = $.extend(true,[], score);
+			var board_n = $.extend(true, [], aboard);
+			board_n[ji[0]][ji[1]] =player;
+			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
+			if( result !== -1){ //if not suicide
+				result = this.mct_child(result[0],result[1],next_player,depth-1,breath)
+				if (result[player] > best[player]){
+					best = result;
+					best_move = ji;	
+				}
+			}
+
+		}
+		return best_score;
 	};
 
 	// returns aboard and score if move is not suicide else -1
-	this.simulate_move = function(j0,i0,player,aboard,score){ 
+	this.simulate_move = function(j0, i0, player, aboard, check_capture, score){ 
 		var group = [[j0,i0]];
 		var group_check ={};
 		group_check[[j,i]] = 0;
@@ -108,43 +152,51 @@ function Player(){
 			for(var k = 0 ; k < 4 ; k ++){
 				var jk = p[k][0];
 				var ik = p[k][1];
-				if( jk >= 0 && ik >= 0 && jk <= this.size  && ik <= this.size ){
-					if(this.board[jk][ik] === -1){
+				if( jk >= 0 && ik >= 0 && jk <= game0.size  && ik <= game0.size ){
+					if(aboard[jk][ik] === -1){
 						liberty.push(p[k]);
 					}
-					else if (this.board[jk][ik] === player){ 
+					else if (aboard[jk][ik] === player){ 
 						if (group_check[p[k]] !== 0){
 							group.push( p[k] );
 							group_check[p[k]]  = 0;
 						}
 					}
-					else if (k0 === 0 ){ //only need to check for captures around new point
+					else if (k0 === 0 && check_capture === true){ 
+					//only need to check for captures around new point
 						capture.push( p[k] );
 					}
 
 				}
 			}
 		}
+		var other_player = (player+1)%2;
 		if ( check_capture === true){
 			var capture_count =0;
 			for(var k2 =0; k2 < capture.length; k2++){
-				//if (this.find_group(capture[k2][0],capture[k2][1],(player+1)%2,false) === 0){
-				//	capture_count += 1;
-				//}
+				var result =this.simulate_move(capture[k2][0],capture[k2][1],other_player,aboard,false,score);
+				if (result[0] === -1){
+					capture_count += 1;
+					aboard = result[1];
+					score = result[2];
+				}
 			}
-			if( capture_count > 0){
-				return group;
-			}else if ( liberty.length === 0 ){
-				return 0;
-			}else{
-				return group;
+			if( capture_count > 0 || liberty.length > 0){
+				return [aboard,score];
+			}else {
+				return -1;
 			}
 		}else{
 			if( liberty.length === 0){
-				//this.eliminate_group(group);
-				return 0;
+
+				this.eliminate_group(group);
+				for (var n = 0; n < group.length; n++){
+					aboard[group[n][0] ] [group[n][1]] == -1;
+					score[other_player] += 1;
+				}
+				return [-1,aboard,score];
 			}else{
-				return group;
+				return[aboard,score];
 			}
 		}
 
