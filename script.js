@@ -19,13 +19,16 @@ $('#a').click(function (e) {
     	if (game0.make_move(j,i) ===1){
     		game_v.draw_piece(x,y,game0.colors[game0.turn%2]);
     		game0.turn += 1 ;
+    		game0.playing =false;
     		if(game0.ai){
     			var ji2 = al.next_move();
-    			while( game0.make_move(ji2[0],ji2[1]) !== 1){
-    				ji2 = al.next_move();
-    			} 
-    			game_v.draw_piece( (ji2[1]+1)*40, (ji2[0]+1)*40, game0.colors[game0.turn%2]);
-    			game0.turn += 1 ;
+    			if (ji2 === -1 || game0.make_move(ji2[0],ji2[1]) !== 1){
+    				game0.pass();
+    			}else{
+    				game_v.draw_piece( (ji2[1]+1)*40, (ji2[0]+1)*40, game0.colors[game0.turn%2]);
+    			}
+    			game0.turn +=1;
+    			game0.playing = true;
     		}
    		 }
     }else if( x_raw > 0 && y_raw > game_v.game_size && y_raw < game_v.game_size+28 && x < game_v.game_size ){
@@ -44,14 +47,108 @@ $('#a').click(function (e) {
 
 function Player(){
 	this.next_move= function(){
-		var jp = 2;
-		var ip = 2;
-		while (game0.board[jp][ip] !== -1){
-			jp = Math.floor((Math.random()*(game0.size+1) ));
-			ip = Math.floor((Math.random()*(game0.size+1) ));
+		var move_list = this.valid_moves(game0.board);
+		if (move_list.length > 0){
+			var index = Math.floor((Math.random()*(move_list.length) ));
+			return move_list[index];
 		}
+		return -1;
+	};
+
+	this.mct= function(breath,depth){
+		var moves =[];
+		var attempt = 0;
+		var move_list = this.valid_moves(game0.board);
+
+		while (moves.length < breath || moves.length === move_list.length){
+			var index = Math.floor((Math.random()*(move_list.length) ));
+			if( moves.indexOf(index) === -1){
+				moves.push(index);
+			}
+		}
+		for(var n = 0; n < moves.length ; n++){
+			var ji = move_list[moves[n]];
+			var board_n = $.extend(true, [], game0.board);
+			board_n = simulate_move(ji[0],ji[1],turn%2,board_n);
+			
+
+		}
+
 		return [jp,ip];
 	};
+
+	this.valid_moves =function(aboard){
+		var move_list=[];
+		for(var j0 = 0 ; j0 < aboard.length ; j0 ++){
+			for(var i0 = 0 ; i0 < aboard.length ; i0 ++){
+				if(aboard[j0][i0] === -1){
+					move_list.push([j0,i0]);
+				}
+			}
+		}
+		return move_list;
+	};
+
+	this.mct_child = function(aboard,player){
+
+	};
+
+	// returns aboard and score if move is not suicide else -1
+	this.simulate_move = function(j0,i0,player,aboard,score){ 
+		var group = [[j0,i0]];
+		var group_check ={};
+		group_check[[j,i]] = 0;
+		var liberty =[];
+		var capture=[];
+		for(var k0 = 0; k0 < group.length; k0 +=1){
+			var j0 = group[k0][0];
+			var i0 = group[k0][1];
+			var p = [[j0-1,i0],[j0+1,i0],[j0,i0-1],[j0,i0+1]];
+
+			for(var k = 0 ; k < 4 ; k ++){
+				var jk = p[k][0];
+				var ik = p[k][1];
+				if( jk >= 0 && ik >= 0 && jk <= this.size  && ik <= this.size ){
+					if(this.board[jk][ik] === -1){
+						liberty.push(p[k]);
+					}
+					else if (this.board[jk][ik] === player){ 
+						if (group_check[p[k]] !== 0){
+							group.push( p[k] );
+							group_check[p[k]]  = 0;
+						}
+					}
+					else if (k0 === 0 ){ //only need to check for captures around new point
+						capture.push( p[k] );
+					}
+
+				}
+			}
+		}
+		if ( check_capture === true){
+			var capture_count =0;
+			for(var k2 =0; k2 < capture.length; k2++){
+				//if (this.find_group(capture[k2][0],capture[k2][1],(player+1)%2,false) === 0){
+				//	capture_count += 1;
+				//}
+			}
+			if( capture_count > 0){
+				return group;
+			}else if ( liberty.length === 0 ){
+				return 0;
+			}else{
+				return group;
+			}
+		}else{
+			if( liberty.length === 0){
+				//this.eliminate_group(group);
+				return 0;
+			}else{
+				return group;
+			}
+		}
+
+	}
 };
 
 function Game_Logic(){
@@ -68,13 +165,10 @@ function Game_Logic(){
 	};
 	this.pass =function(){
 		this.pass_count += 1;
-		if(this.ai){
-			this.pass_count +=1;
+		if (this.ai || this.pass_count === 2){
+			this.game_over();
 		}
-		if (this.pass_count === 2){
-			this.game_over()
-		}
-	}
+	};
 	this.game_over =function(){
 		this.playing = false;
 		//var i = influence(); // score is based on area controled
@@ -88,7 +182,7 @@ function Game_Logic(){
 			game_v.win_message("Tie");
 		}
 		
-	}
+	};
 	// sets up the board data structure
 	this.new_board = function (){
 		this.board = [];
@@ -106,6 +200,7 @@ function Game_Logic(){
 			this.board[j][i] = -1;
 			return 0;
 		}else{
+			this.pass_count = 0; 
 			return 1;
 		}
 	};
