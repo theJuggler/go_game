@@ -1,4 +1,3 @@
-// Set up!
 var a_canvas = document.getElementById("a");
 var context = a_canvas.getContext("2d");
 
@@ -8,31 +7,64 @@ game0.new_Game();
 
 
 $('#a').click(function (e) {
-    var x = roundMultiple(e.pageX - this.offsetLeft,game_v.piece_size);
-    var y = roundMultiple(e.pageY - this.offsetTop,game_v.piece_size);
+    var x_raw = e.pageX - this.offsetLeft;
+    var x = roundMultiple(x_raw,game_v.piece_size);
+    var y_raw = e.pageY - this.offsetTop;
+    var y = roundMultiple(y_raw	,game_v.piece_size);
 	var i = x/40 -1;
 	var j = y/40 -1;
-	if( x > 0 && y > 0 && y < 400 && x < 400 && game0.board[j][i] === -1){
+	if( x > 0 && y > 0 && y < game_v.game_size && x < game_v.game_size && game0.board[j][i] === -1 &&game0.playing){
     	
     	if (game0.make_move(j,i) ===1){
     		game_v.draw_piece(x,y,game0.colors[game0.turn%2]);
     		game0.turn += 1 ;
+   		 }
+    }else if( x_raw > 0 && y_raw > game_v.game_size && y_raw < game_v.game_size+28 && x < game_v.game_size ){
+    	
+    	if (x_raw < 120){
+    		game0.new_Game();
+
+   		 }else if (x_raw < 170){
+   		 	//pass
+   		 	game0.turn +=1;
+   		 	game0.pass();
+
    		 }
     }
 });
 
 
 function Game_Logic(){
-	this.turn = 0
-	this.board=[];
 	this.colors = ["black", "white"];
-	this.score = [0,0];
 	this.size = 8;
 	this.new_Game =function (){
+		this.playing = true;
 		this.turn =0;
 		this.new_board();
+		this.score = [0,0];
 		game_v.draw_board();
+		this.pass_count = 0;
 	};
+	this.pass =function(){
+		this.pass_count += 1;
+		if (this.pass_count === 2){
+			this.game_over()
+		}
+	}
+	this.game_over =function(){
+		this.playing = false;
+		//var i = influence(); // score is based on area controled
+		var score_b=this.score[0];//+i[0];
+		var score_w=this.score[1];//+i[1];
+		if (score_b > score_w){
+			game_v.win_message("Black Wins");
+		}else if (score_b < score_w){
+			game_v.win_message("White Wins");
+		}else{
+			game_v.win_message("Tie");
+		}
+		
+	}
 	// sets up the board data structure
 	this.new_board = function (){
 		this.board = [];
@@ -112,6 +144,7 @@ function Game_Logic(){
 		for(var k3 = 0; k3 < group.length;k3++){
 			this.board[group[k3][0]][group[k3][1]] = -1;
 			game_v.erase_piece(group[k3][1]*40+40,group[k3][0]*40+40);
+			this.score[this.turn%2] += 1;
 		}
 	};
 
@@ -128,6 +161,9 @@ function Game_Visuals(){
 	this.ps = 15;
 	this.board_color = "#de6";
 	this.start = 40;
+	this.grid_size = this.piece_size * this.size;
+	this.game_size = this.grid_size+ this.start*2;
+
 
 	this.draw_piece = function(x,y,color){
 		context.fillStyle = color;
@@ -154,42 +190,52 @@ function Game_Visuals(){
 		context.moveTo( x, y+this.ps+3);
 		context.lineTo( x, y-this.ps-3);
 		context.closePath();
-		context.strokeStyle = "#111";
+		context.strokeStyle = "black";
 		context.stroke();
 	};
-
+	this.win_message = function(message){
+		context.font = "21px Garamond";
+		context.fillStyle = 'black';
+		context.fillText(message,170+this.ps,this.game_size +this.piece_size/2);
+	};
 	this.draw_board = function(){
-		var total_size = this.piece_size * this.size;
 		context.fillStyle = this.board_color;
 		context.beginPath();
 		context.moveTo( 0, 0);
-		context.lineTo(total_size+this.start*2, 0);
-		context.lineTo(total_size+this.start*2,  total_size+this.start*2);
-		context.lineTo(0,  total_size+this.start*2);
+		context.lineTo(this.game_size, 0);
+		context.lineTo(this.game_size,  this.game_size);
+		context.lineTo(0,  this.game_size);
 		context.lineTo(0,  0);
 		context.closePath();
 		context.fill();
+
 		context.beginPath();
-		context.moveTo(0, total_size+this.start*2);
-		context.lineTo(0,total_size+this.start*2+this.piece_size);
-		context.lineTo(total_size+this.start*2,total_size+this.start*2+this.piece_size);
-		context.lineTo(total_size+this.start*2,total_size+this.start*2);
+		context.moveTo(0, this.game_size);
+		context.lineTo(0,this.game_size+28);
+		context.lineTo(this.game_size,this.game_size+28);
+		context.lineTo(this.game_size,this.game_size);
 		context.closePath();
 		context.fill();
+		context.font = "21px Garamond";
+		context.fillStyle = 'black';
+		context.fillText("New Game    Pass",this.ps,this.game_size +this.piece_size/2);
+		context.moveTo(120,this.game_size);
+		context.lineTo(120,this.game_size+28);
+		context.moveTo(170,this.game_size);
+		context.lineTo(170,this.game_size+28);
 
 		
 		for (var xy = 0; xy <= this.size; xy += 1) {
 			/* vertical lines */
 			context.moveTo( xy*this.piece_size+this.start, this.start);
-			context.lineTo(xy*this.piece_size+this.start, total_size+this.start);
+			context.lineTo(xy*this.piece_size+this.start, this.grid_size+this.start);
 			/* horizontal lines */
 			context.moveTo(this.start,  xy*this.piece_size+this.start);
-			context.lineTo(total_size+this.start,  xy*this.piece_size+this.start);
+			context.lineTo(this.grid_size+this.start,  xy*this.piece_size+this.start);
 		}
 
-		context.strokeStyle = "#111";
+		context.strokeStyle = "black";
 		context.stroke();
-
 	};
 
 };
