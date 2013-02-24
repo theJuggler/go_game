@@ -4,7 +4,6 @@ var context = a_canvas.getContext("2d");
 var game_v = new Game_Visuals();
 var game0 = new Game_Logic();
 var al = new Player();
-game0.stones=9;
 game0.new_Game();
 
 
@@ -43,6 +42,11 @@ $('#a').click(function (e) {
    		 	game0.turn +=1;
    		 	game0.pass();
 
+   		 }else if (x_raw < 7*game_v.piece_size){
+   		 	game0.stones= (game0.stones+1)%10;
+   		 	game_v.redraw_stones(game0.stones);
+   		 	if (game0.turn === 0 || game0.turn === 1)
+   		 		game0.new_Game();
    		 }
     }
 });
@@ -223,7 +227,7 @@ function Game_Logic(){
 		this.turn =0;
 		this.new_board();
 		this.score = [0,0];
-		game_v.draw_board();
+		game_v.draw_board(this.stones);
 		this.pass_count = 0;
 		var sl =[[2,2],[2,6],[6,2],[6,6],[2,4],[4,2],[6,4],[4,6],[4,4]]; //stonelocations
 		if (this.stones > 0 ){
@@ -404,7 +408,7 @@ function Game_Visuals(){
 	this.piece_size = 40;
 	this.ps = 15;
 	this.board_color = "#de6";
-	this.start = 40;
+	this.start = this.piece_size;
 	this.grid_size = this.piece_size * this.size;
 	this.game_size = this.grid_size+ this.start*2;
 
@@ -440,9 +444,19 @@ function Game_Visuals(){
 	this.win_message = function(message){
 		context.font = "21px Garamond";
 		context.fillStyle = 'black';
-		context.fillText(message,170+this.ps,this.game_size +this.piece_size/2);
+		context.fillText(message,280+this.ps,this.game_size +this.piece_size/2);
 	};
-	this.draw_board = function(){
+	this.redraw_stones=function(n){
+		context.beginPath();
+		context.rect(172,this.game_size+2,7*this.piece_size - 175 ,25);
+		context.fillStyle = this.board_color;
+		context.fill();
+		context.closePath();
+		context.font = "21px Garamond";
+		context.fillStyle = 'black';
+		context.fillText(n.toString() +" Stones",185,this.game_size +this.piece_size/2);
+	}
+	this.draw_board = function(n){
 		context.fillStyle = this.board_color;
 		context.beginPath();
 		context.moveTo( 0, 0);
@@ -463,12 +477,15 @@ function Game_Visuals(){
 		context.font = "21px Garamond";
 		context.fillStyle = 'black';
 		context.fillText("New Game    Pass",this.ps,this.game_size +this.piece_size/2);
+
 		context.moveTo(120,this.game_size);
 		context.lineTo(120,this.game_size+28);
 		context.moveTo(170,this.game_size);
 		context.lineTo(170,this.game_size+28);
+		context.moveTo(7*this.piece_size, this.game_size);
+		context.lineTo(7*this.piece_size, this.game_size+28);
+		context.fillText(n.toString() +" Stones",185,this.game_size +this.piece_size/2);
 
-		
 		for (var xy = 0; xy <= this.size; xy += 1) {
 			/* vertical lines */
 			context.moveTo( xy*this.piece_size+this.start, this.start);
