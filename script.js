@@ -356,10 +356,10 @@ function Game_Visuals(){
 		context.fill();
 
 		context.beginPath();
-		context.moveTo( x+this.ps+3, y);
-		context.lineTo( x-this.ps-3, y);
-		context.moveTo( x, y+this.ps+3);
-		context.lineTo( x, y-this.ps-3);
+		context.moveTo( max(this.start,x-this.ps-3), y);
+		context.lineTo( min(this.grid_size+this.start,x+this.ps+3), y);
+		context.moveTo( x, min( this.grid_size+this.start,y+this.ps+3) );
+		context.lineTo( x, max(this.start,y-this.ps-3) );
 		context.closePath();
 		context.strokeStyle = "black";
 		context.stroke();
@@ -411,3 +411,5 @@ function Game_Visuals(){
 
 };
 
+function max(x,y){return (x>y)?x:y;}
+function min(x,y){return (x<y)?x:y;}
