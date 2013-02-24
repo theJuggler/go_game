@@ -21,7 +21,8 @@ $('#a').click(function (e) {
     		game0.turn += 1 ;
     		game0.playing =false;
     		if(game0.ai){
-    			var ji2 = al.next_move();
+    			//var ji2 = al.next_move();
+    			var ji2 = al.mct(5,5); //breath,depth
     			if (ji2 === -1 || game0.make_move(ji2[0],ji2[1]) !== 1){
     				game0.pass();
     			}else{
@@ -67,9 +68,10 @@ function Player(){
 			}
 		}
 		var player = game0.turn%2;
+		var next_player = (player+1)%2;
 		var best_move =0;
-		var best =[0,0];
-		best[player] =-1000;
+		var best = $.extend(true, [], game0.score);
+
 		for(var n = 0; n < moves.length ; n++){
 			var ji = move_list[moves[n]];
 			var score_n = $.extend(true, [], game0.score);
@@ -77,7 +79,7 @@ function Player(){
 			board_n[ji[0]][ji[1]] =player;
 			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
 			if( result !== -1){ //if not suicide
-				result = this.mct_child(result[0],result[1],(player+1)%2,depth-1,breath)
+				result = this.mct_child(result[0],result[1],next_player,depth-1,breath)
 				if (result[player] > best[player]){
 					best = result;
 					best_move = ji;	
@@ -85,7 +87,7 @@ function Player(){
 			}
 
 		}
-
+		if (best_move === 0) return  -1;
 		return best_move;
 	};
 
@@ -100,11 +102,20 @@ function Player(){
 		}
 		return move_list;
 	};
-
+	this.truer_score = function(score,aboard){
+		for(var j0 = 0 ; j0 < aboard.length ; j0 ++){
+			for(var i0 = 0 ; i0 < aboard.length ; i0 ++){
+				if(aboard[j0][i0] !== -1){
+					score[aboard[j0][i0]] +=1;
+				}
+			}
+		}
+		return score;
+	};
 	// returns score
 	this.mct_child = function(aboard,score,player,depth,breath){
 		if( depth === 0){
-			return score;
+			return this.truer_score(score,aboard,player) ;
 		}
 		var moves =[];
 		var attempt = 0;
@@ -127,8 +138,8 @@ function Player(){
 			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
 			if( result !== -1){ //if not suicide
 				result = this.mct_child(result[0],result[1],next_player,depth-1,breath)
-				if (result[player] > best[player]){
-					best = result;
+				if (result[player] > best_score[player]){
+					best_score = result;
 					best_move = ji;	
 				}
 			}
@@ -141,7 +152,7 @@ function Player(){
 	this.simulate_move = function(j0, i0, player, aboard, check_capture, score){ 
 		var group = [[j0,i0]];
 		var group_check ={};
-		group_check[[j,i]] = 0;
+		group_check[[j0,i0]] = 0;
 		var liberty =[];
 		var capture=[];
 		for(var k0 = 0; k0 < group.length; k0 +=1){
@@ -188,8 +199,6 @@ function Player(){
 			}
 		}else{
 			if( liberty.length === 0){
-
-				this.eliminate_group(group);
 				for (var n = 0; n < group.length; n++){
 					aboard[group[n][0] ] [group[n][1]] == -1;
 					score[other_player] += 1;
@@ -223,6 +232,14 @@ function Game_Logic(){
 	};
 	this.game_over =function(){
 		this.playing = false;
+
+		for(var j0 = 0 ; j0 < this.board.length ; j0 ++){
+			for(var i0 = 0 ; i0 < this.board.length ; i0 ++){
+				if(this.board[j0][i0] !== -1){
+					this.score[this.board[j0][i0]] +=1;
+				}
+			}
+		}
 		//var i = influence(); // score is based on area controled
 		var score_b=this.score[0];//+i[0];
 		var score_w=this.score[1];//+i[1];
