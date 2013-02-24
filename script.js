@@ -4,6 +4,7 @@ var context = a_canvas.getContext("2d");
 var game_v = new Game_Visuals();
 var game0 = new Game_Logic();
 var al = new Player();
+game0.stones=9;
 game0.new_Game();
 
 
@@ -215,6 +216,7 @@ function Player(){
 function Game_Logic(){
 	this.colors = ["black", "white"];
 	this.size = 8;
+	this.stones = 0;
 	this.new_Game =function (){
 		this.ai=true;
 		this.playing = true;
@@ -223,6 +225,15 @@ function Game_Logic(){
 		this.score = [0,0];
 		game_v.draw_board();
 		this.pass_count = 0;
+		var sl =[[2,2],[2,6],[6,2],[6,6],[2,4],[4,2],[6,4],[4,6],[4,4]]; //stonelocations
+		if (this.stones > 0 ){
+			for(var n =0 ; n < this.stones ; n++){
+
+				game_v.draw_piece( (sl[n][1]+1)*40, (sl[n][0]+1)*40, this.colors[0]);
+				this.board[ sl[n][0] ][ sl[n][1] ]=0;
+			}
+			this.turn =1;
+		}
 	};
 	this.pass =function(){
 		this.pass_count += 1;
@@ -232,7 +243,7 @@ function Game_Logic(){
 	};
 	this.game_over =function(){
 		this.playing = false;
-
+		this.fill_territory();
 		for(var j0 = 0 ; j0 < this.board.length ; j0 ++){
 			for(var i0 = 0 ; i0 < this.board.length ; i0 ++){
 				if(this.board[j0][i0] !== -1){
@@ -251,6 +262,51 @@ function Game_Logic(){
 			game_v.win_message("Tie");
 		}
 		
+	};
+	// expands groups as estimate of territy
+	// does not calclate if a group is dead
+	this.fill_territory = function (){
+		var n = 99;
+		while(true){
+			var n2 = 0;
+			for (var i = 0;i < 9;i++){
+			    for (var j = 0;j < 9;j++){
+			    	if( this.board[i][j] === -1){
+			    		var neighbors = [0,0];
+			    		if( i > 0){
+			    			if( this.board[i-1][j] !== -1)
+			    				neighbors[ this.board[i-1][j] ] +=1;
+			    		}
+			    		if( i < 8){
+			    			if( this.board[i+1][j] !== -1)
+			    				neighbors[ this.board[i+1][j] ] +=1;
+			    		}
+			    		if( j > 0){
+			    			if( this.board[i][j-1] !== -1)
+			    				neighbors[ this.board[i][j-1] ] +=1;
+			    		}
+			    		if( j < 8){
+			    			if( this.board[i][j+1] !== -1)
+			    				neighbors[ this.board[i][j+1] ] +=1;
+			    		}
+
+			    		if(neighbors[0] > neighbors[1]){
+			    			this.board[i][j] = 0;
+			    			game_v.draw_piece( (j+1)*40, (i+1)*40, this.colors[0]);
+			    		}else if(neighbors[0] < neighbors[1]){
+			    			this.board[i][j] = 1;
+			    			game_v.draw_piece( (j+1)*40, (i+1)*40, this.colors[1]);
+			    		}else{
+			    			n2 += 1;
+			    		}
+			    	}
+			    }
+			 }
+			 if (n2 === n)
+			 	break;
+			 n =n2;
+		}
+
 	};
 	// sets up the board data structure
 	this.new_board = function (){
