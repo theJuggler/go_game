@@ -63,35 +63,32 @@ function Player(){
 
 	this.mct= function(breath,depth){
 		var moves =[];
-		var attempt = 0;
 		var move_list = this.valid_moves(game0.board);
-
-		while (moves.length < breath || moves.length === move_list.length){
-			var index = Math.floor((Math.random()*(move_list.length) ));
-			if( moves.indexOf(index) === -1){
-				moves.push(index);
-			}
-		}
 		var player = game0.turn%2;
 		var next_player = (player+1)%2;
 		var best_move =0;
 		var best = $.extend(true, [], game0.score);
-
-		for(var n = 0; n < moves.length ; n++){
-			var ji = move_list[moves[n]];
-			var score_n = $.extend(true, [], game0.score);
-			var board_n = $.extend(true, [], game0.board);
-			board_n[ji[0]][ji[1]] =player;
-			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
-			if( result !== -1){ //if not suicide
-				result = this.mct_child(result[0],result[1],next_player,depth-1,breath)
-				if (result[player] > best[player]){
-					best = result;
-					best_move = ji;	
+		//I add 10 to breath so it does more searching at the head
+		// while changing the breath all the way down slows it way down
+		while (moves.length < (breath+10) && moves.length !== move_list.length){
+			var index = Math.floor((Math.random()*(move_list.length) ));
+			if( moves.indexOf(index) === -1){
+				moves.push(index);
+				var ji = move_list[index];
+				var board_n = $.extend(true, [], game0.board);
+				board_n[ji[0]][ji[1]] =player;
+				var result = this.simulate_move(ji[0],ji[1],player,board_n,true,$.extend(true, [], game0.score));
+				if( result !== -1){ //if not suicide
+					result = this.mct_child(result[0],result[1],next_player,depth-1,breath,r(move_list,index))
+					if (result[player] > best[player]){
+						best = $.extend(true, [], result);
+						best_move = $.extend(true, [], ji);
+					}
 				}
 			}
-
 		}
+		
+
 		if (best_move === 0) return  -1;
 		return best_move;
 	};
@@ -108,6 +105,44 @@ function Player(){
 		return move_list;
 	};
 	this.truer_score = function(score,aboard){
+		var n = 99;
+		while(true){
+			var n2 = 0;
+			for (var i = 0;i < 9;i++){
+			    for (var j = 0;j < 9;j++){
+			    	if( aboard[i][j] === -1){
+			    		var neighbors = [0,0];
+			    		if( i > 0){
+			    			if( aboard[i-1][j] !== -1)
+			    				neighbors[ aboard[i-1][j] ] +=1;
+			    		}
+			    		if( i < 8){
+			    			if( aboard[i+1][j] !== -1)
+			    				neighbors[ aboard[i+1][j] ] +=1;
+			    		}
+			    		if( j > 0){
+			    			if( aboard[i][j-1] !== -1)
+			    				neighbors[ aboard[i][j-1] ] +=1;
+			    		}
+			    		if( j < 8){
+			    			if( aboard[i][j+1] !== -1)
+			    				neighbors[ aboard[i][j+1] ] +=1;
+			    		}
+
+			    		if(neighbors[0] > neighbors[1]){
+			    			aboard[i][j] = 0;
+			    		}else if(neighbors[0] < neighbors[1]){
+			    			aboard[i][j] = 1;
+			    		}else{
+			    			n2 += 1;
+			    		}
+			    	}
+			    }
+			 }
+			 if (n2 === n)
+			 	break;
+			 n =n2;
+		}
 		for(var j0 = 0 ; j0 < aboard.length ; j0 ++){
 			for(var i0 = 0 ; i0 < aboard.length ; i0 ++){
 				if(aboard[j0][i0] !== -1){
@@ -117,72 +152,86 @@ function Player(){
 		}
 		return score;
 	};
+
+	r=function(cc,i){
+		return cc.slice(0,i).concat(cc.slice(i+1,cc.length))
+	}
 	// returns score
-	this.mct_child = function(aboard,score,player,depth,breath){
+	this.mct_child = function(aboard,score,player,depth,breath,move_list){
+		//console.log(move_list.join("]["));
 		if( depth === 0){
-			return this.truer_score(score,aboard,player) ;
+			return this.truer_score(score,aboard) ;
 		}
 		var moves =[];
-		var attempt = 0;
-		var move_list = this.valid_moves(aboard);
-
-		while (moves.length < breath || moves.length === move_list.length){
-			var index = Math.floor((Math.random()*(move_list.length) ));
-			if( moves.indexOf(index) === -1){
-				moves.push(index);
-			}
-		}
 		var next_player = (player+1)%2;
 		var best_move =0;
 		var best_score =score;
-		for(var n = 0; n < moves.length ; n++){
-			var ji = move_list[moves[n]];
-			var score_n = $.extend(true,[], score);
-			var board_n = $.extend(true, [], aboard);
-			board_n[ji[0]][ji[1]] =player;
-			var result = this.simulate_move(ji[0],ji[1],player,board_n,true,score_n);
-			if( result !== -1){ //if not suicide
-				result = this.mct_child(result[0],result[1],next_player,depth-1,breath)
-				if (result[player] > best_score[player]){
-					best_score = result;
-					best_move = ji;	
-				}
-			}
+		while (moves.length < breath && moves.length !== move_list.length){
+			var index = Math.floor((Math.random()*(move_list.length) ));
+			if( moves.indexOf(index) === -1){
+				moves.push(index);
 
+				var ji = move_list[index];
+				var board_n = $.extend(true, [], aboard);
+				board_n[ji[0]][ji[1]] =player;
+				var result = this.simulate_move(ji[0],ji[1],player,board_n,true,$.extend(true,[], score));
+				if( result !== -1){ //if not suicide
+					result = this.mct_child(result[0],result[1],next_player,depth-1,breath,r(move_list,index))
+					if (result[player] > best_score[player]){
+						best_score = result;
+						best_move = ji;	
+					}
+				}
+
+			}
 		}
 		return best_score;
 	};
 
 	// returns aboard and score if move is not suicide else -1
 	this.simulate_move = function(j0, i0, player, aboard, check_capture, score){ 
+		function neighbors(j,i){
+			var n = [];
+			if(j > 0){
+				n.push([j-1,i]);
+			}
+			if( i > 0 ){
+				n.push([j,i-1]);
+			}
+			if( j < 8){
+				n.push([j+1,i]);
+			}
+			if (i < 8){
+				n.push([j,i+1]);
+			}
+			return n;
+		};
 		var group = [[j0,i0]];
 		var group_check ={};
 		group_check[[j0,i0]] = 0;
 		var liberty =[];
 		var capture=[];
-		for(var k0 = 0; k0 < group.length; k0 +=1){
-			var j0 = group[k0][0];
-			var i0 = group[k0][1];
-			var p = [[j0-1,i0],[j0+1,i0],[j0,i0-1],[j0,i0+1]];
 
-			for(var k = 0 ; k < 4 ; k ++){
+		for(var k0 = 0; k0 < group.length; k0 +=1){
+			var p = neighbors(group[k0][0], group[k0][1]);
+
+			for(var k = 0 ; k < p.length ; k ++){
+
 				var jk = p[k][0];
 				var ik = p[k][1];
-				if( jk >= 0 && ik >= 0 && jk <= game0.size  && ik <= game0.size ){
-					if(aboard[jk][ik] === -1){
-						liberty.push(p[k]);
-					}
-					else if (aboard[jk][ik] === player){ 
-						if (group_check[p[k]] !== 0){
-							group.push( p[k] );
-							group_check[p[k]]  = 0;
-						}
-					}
-					else if (k0 === 0 && check_capture === true){ 
-					//only need to check for captures around new point
-						capture.push( p[k] );
-					}
 
+				if(aboard[jk][ik] === -1){
+					liberty.push(p[k]);
+				}
+				else if (aboard[jk][ik] === player){ 
+					if (group_check[p[k]] !== 0){
+						group.push( p[k] );
+						group_check[p[k]]  = 0;
+					}
+				}
+				else if (k0 === 0 && check_capture === true){ 
+				//only need to check for captures around new point
+					capture.push( p[k] );
 				}
 			}
 		}
@@ -334,33 +383,44 @@ function Game_Logic(){
 		}
 	};
 	this.find_group = function(j,i,player,check_capture){
+		function neighbors(j,i){
+			var n = [];
+			if(j > 0){
+				n.push([j-1,i]);
+			}
+			if( i > 0 ){
+				n.push([j,i-1]);
+			}
+			if( j < 8){
+				n.push([j+1,i]);
+			}
+			if (i < 8){
+				n.push([j,i+1]);
+			}
+			return n;
+		};
 		var group = [[j,i]];
 		var group_check ={};
 		group_check[[j,i]] = 0;
 		var liberty =[];
 		var capture=[];
 		for(var k0 = 0; k0 < group.length; k0 +=1){
-			var j0 = group[k0][0];
-			var i0 = group[k0][1];
-			var p = [[j0-1,i0],[j0+1,i0],[j0,i0-1],[j0,i0+1]];
+			var p = neighbors(group[k0][0],group[k0][1]);
 
-			for(var k = 0 ; k < 4 ; k ++){
+			for(var k = 0 ; k < p.length ; k ++){
 				var jk = p[k][0];
 				var ik = p[k][1];
-				if( jk >= 0 && ik >= 0 && jk <= this.size  && ik <= this.size ){
-					if(this.board[jk][ik] === -1){
-						liberty.push(p[k]);
+				if(this.board[jk][ik] === -1){
+					liberty.push(p[k]);
+				}
+				else if (this.board[jk][ik] === player){ 
+					if (group_check[p[k]] !== 0){
+						group.push( p[k] );
+						group_check[p[k]]  = 0;
 					}
-					else if (this.board[jk][ik] === player){ 
-						if (group_check[p[k]] !== 0){
-							group.push( p[k] );
-							group_check[p[k]]  = 0;
-						}
-					}
-					else if (k0 === 0 ){ //only need to check for captures around new point
-						capture.push( p[k] );
-					}
-
+				}
+				else if (k0 === 0 ){ //only need to check for captures around new point
+					capture.push( p[k] );
 				}
 			}
 		}
@@ -398,9 +458,7 @@ function Game_Logic(){
 
 };
 
-function roundMultiple(num, multiple) {
-	return(Math.round(num / multiple) * multiple);
-};
+function roundMultiple(num, multiple) {return(Math.round(num / multiple) * multiple);};
 
 
 function Game_Visuals(){
