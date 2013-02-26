@@ -22,7 +22,7 @@ $('#a').click(function (e) {
     		game0.playing =false;
     		if(game0.ai){
     			//var ji2 = al.next_move();
-    			var ji2 = al.mct(5,5); //breath,depth
+    			var ji2 = al.mct(); 
     			if (ji2 === -1 || game0.make_move(ji2[0],ji2[1]) !== 1){
     				game0.pass();
     			}else{
@@ -61,16 +61,21 @@ function Player(){
 		return -1;
 	};
 
-	this.mct= function(breath,depth){
+	this.mct= function(){
+	
+		var breath =1;
+		//some configuration of these 2 should make for
+		// the right balance of speed and a reasonable move
+		var depth =20; 
+		var sims= 30;
+
 		var moves =[];
 		var move_list = this.valid_moves(game0.board);
 		var player = game0.turn%2;
 		var next_player = (player+1)%2;
 		var best_move =0;
 		var best = $.extend(true, [], game0.score);
-		//I add 10 to breath so it does more searching at the head
-		// while changing the breath all the way down slows it way down
-		while (moves.length < (breath+10) && moves.length !== move_list.length){
+		while ( moves.length !== move_list.length){
 			var index = Math.floor((Math.random()*(move_list.length) ));
 			if( moves.indexOf(index) === -1){
 				moves.push(index);
@@ -79,9 +84,17 @@ function Player(){
 				board_n[ji[0]][ji[1]] =player;
 				var result = this.simulate_move(ji[0],ji[1],player,board_n,true,$.extend(true, [], game0.score));
 				if( result !== -1){ //if not suicide
-					result = this.mct_child(result[0],result[1],next_player,depth-1,breath,r(move_list,index))
-					if (result[player] > best[player]){
-						best = $.extend(true, [], result);
+					var average=[0,0]
+					for(var num = 0; num < sims ; num ++){
+						var result2 = this.mct_child(result[0],result[1],next_player,depth-1,breath,r(move_list,index));
+						average[0] += result2[0];
+						average[1] += result2[1];
+					}
+					average[0] = average[0]/sims;
+					average[1] = average[1]/sims;
+
+					if (average[player] > best[player]){
+						best = $.extend(true, [], average);
 						best_move = $.extend(true, [], ji);
 					}
 				}
@@ -159,7 +172,7 @@ function Player(){
 	// returns score
 	this.mct_child = function(aboard,score,player,depth,breath,move_list){
 		//console.log(move_list.join("]["));
-		if( depth === 0){
+		if( depth === 0 || move_list.length === 0){
 			return this.truer_score(score,aboard) ;
 		}
 		var moves =[];
